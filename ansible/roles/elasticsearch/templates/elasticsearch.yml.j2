@@ -1,0 +1,58 @@
+# ============================================================================
+# Configuration Elasticsearch - Générée par Ansible
+# Nœud: {{ es_node_name }}
+# ============================================================================
+
+# --- Cluster ---
+cluster.name: {{ es_cluster_name }}
+node.name: {{ es_node_name }}
+node.roles: {{ es_node_roles }}
+
+# --- Chemins ---
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+path.repo:
+  - {{ es_snapshot_repo_path }}
+
+# --- Réseau ---
+network.host: {{ ansible_host }}
+http.port: 9200
+transport.port: 9300
+
+# --- Discovery ---
+discovery.seed_hosts:
+{% for ip in es_master_nodes %}
+  - "{{ ip }}:9300"
+{% endfor %}
+
+{% if inventory_hostname in groups['es_masters'] %}
+cluster.initial_master_nodes:
+{% for node in es_initial_master_nodes %}
+  - "{{ node }}"
+{% endfor %}
+{% endif %}
+
+# --- Sécurité xpack ---
+xpack.security.enabled: true
+
+# TLS couche transport (inter-nœuds)
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.verification_mode: certificate
+xpack.security.transport.ssl.certificate_authorities: {{ es_certs_dir }}/ca.crt
+xpack.security.transport.ssl.certificate: {{ es_certs_dir }}/{{ es_node_name }}.crt
+xpack.security.transport.ssl.key: {{ es_certs_dir }}/{{ es_node_name }}.key
+
+# TLS couche HTTP
+xpack.security.http.ssl.enabled: true
+xpack.security.http.ssl.certificate_authorities: {{ es_certs_dir }}/ca.crt
+xpack.security.http.ssl.certificate: {{ es_certs_dir }}/{{ es_node_name }}.crt
+xpack.security.http.ssl.key: {{ es_certs_dir }}/{{ es_node_name }}.key
+
+# --- Performance ---
+bootstrap.memory_lock: true
+
+# --- Audit Logging ---
+xpack.security.audit.enabled: true
+
+# --- ILM activé ---
+xpack.license.self_generated.type: basic

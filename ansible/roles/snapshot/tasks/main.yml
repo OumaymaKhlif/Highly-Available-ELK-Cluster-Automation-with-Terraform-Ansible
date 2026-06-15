@@ -1,0 +1,126 @@
+# ============================================================================
+# Rôle: snapshot - Configuration des snapshots Elasticsearch
+# ============================================================================
+---
+- name: Créer le répertoire de snapshots sur les data nodes
+  ansible.builtin.file:
+    path: "{{ es_snapshot_repo_path }}"
+    state: directory
+    owner: elasticsearch
+    group: elasticsearch
+    mode: "0750"
+  when: inventory_hostname in groups['es_data']
+
+- name: Attendre qu'Elasticsearch soit prêt
+  ansible.builtin.uri:
+    url: "https://{{ ansible_host }}:9200/_cluster/health"
+    user: "elastic"
+    password: "{{ es_elastic_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    method: GET
+    status_code: 200
+    return_content: yes
+  register: cluster_health
+  retries: 30
+  delay: 10
+  until: cluster_health.status == 200
+  when: inventory_hostname == "es-master-01"
+
+- name: Enregistrer le dépôt de snapshots
+  ansible.builtin.uri:
+    url: "https://{{ ansible_host }}:9200/_snapshot/{{ es_snapshot_repo_name }}?verify=false"
+    user: "elastic"
+    password: "{{ es_elastic_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    method: PUT
+    body_format: json
+    body:
+      type: "fs"
+      settings:
+        location: "{{ es_snapshot_repo_path }}"
+        compress: true
+    status_code: [200]
+  when: inventory_hostname == "es-master-01"
+
+- name: Créer la politique ILM
+  ansible.builtin.uri:
+    url: "https://{{ ansible_host }}:9200/_ilm/policy/elk-ilm-policy"
+    user: "elastic"
+    password: "{{ es_elastic_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    method: PUT
+    body_format: json
+    body:
+      policy:
+        phases:
+          hot:
+            min_age: "0ms"
+            actions:
+              rollover:
+                max_age: "7d"
+                max_primary_shard_size: "25gb"
+          warm:
+            min_age: "30d"
+            actions:
+              forcemerge:
+                max_num_segments: 1
+              shrink:
+                number_of_shards: 1
+          cold:
+            min_age: "90d"
+            actions:
+              freeze: {}
+          delete:
+            min_age: "365d"
+            actions:
+              delete: {}
+    status_code: [200]
+  when: inventory_hostname == "es-master-01"
+
+- name: Créer la politique SLM (Snapshot Lifecycle Management)
+  ansible.builtin.uri:
+    url: "https://{{ ansible_host }}:9200/_slm/policy/daily-snapshots"
+    user: "elastic"
+    password: "{{ es_elastic_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    method: PUT
+    body_format: json
+    body:
+      schedule: "0 30 2 * * ?"
+      name: "<daily-snap-{now/d}>"
+      repository: "{{ es_snapshot_repo_name }}"
+      config:
+        indices: ["*"]
+        ignore_unavailable: true
+        include_global_state: false
+      retention:
+        expire_after: "30d"
+        min_count: 5
+        max_count: 30
+    status_code: [200]
+  when: inventory_hostname == "es-master-01"
+
+- name: Configurer le template d'index avec replicas
+  ansible.builtin.uri:
+    url: "https://{{ ansible_host }}:9200/_index_template/default-template"
+    user: "elastic"
+    password: "{{ es_elastic_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    method: PUT
+    body_format: json
+    body:
+      index_patterns: ["logstash-*", "filebeat-*", "metricbeat-*"]
+      priority: 100
+      template:
+        settings:
+          number_of_replicas: 1
+          number_of_shards: 1
+          index.lifecycle.name: "elk-ilm-policy"
+          index.lifecycle.rollover_alias: "logstash"
+    status_code: [200]
+  when: inventory_hostname == "es-master-01"

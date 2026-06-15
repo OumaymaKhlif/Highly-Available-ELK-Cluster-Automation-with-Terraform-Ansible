@@ -1,0 +1,8 @@
+# ============================================================================
+# Handlers du rôle kibana
+# ============================================================================
+---
+- name: Redémarrer Kibana
+  ansible.builtin.systemd:
+    name: kibana
+    state: restarted

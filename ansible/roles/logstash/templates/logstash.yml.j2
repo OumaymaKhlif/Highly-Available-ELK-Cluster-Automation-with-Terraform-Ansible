@@ -1,0 +1,20 @@
+# ============================================================================
+# Configuration Logstash - Générée par Ansible
+# ============================================================================
+
+node.name: {{ inventory_hostname }}
+path.data: /var/lib/logstash
+path.logs: /var/log/logstash
+path.config: /etc/logstash/conf.d
+
+pipeline.workers: {{ logstash_pipeline_workers }}
+pipeline.batch.size: {{ logstash_pipeline_batch_size }}
+
+# Dead Letter Queue pour les événements en échec
+dead_letter_queue.enable: true
+
+# API de monitoring Logstash
+api.http.host: "0.0.0.0"
+api.http.port: 9600
+
+log.level: info

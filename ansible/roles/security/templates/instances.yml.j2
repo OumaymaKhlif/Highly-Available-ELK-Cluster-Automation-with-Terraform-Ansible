@@ -1,0 +1,29 @@
+# ============================================================================
+# Fichier instances.yml pour elasticsearch-certutil
+# Définit les certificats à générer pour chaque nœud
+# ============================================================================
+instances:
+{% for host in groups['elasticsearch'] %}
+  - name: "{{ host }}"
+    ip:
+      - "{{ hostvars[host]['ansible_host'] }}"
+    dns:
+      - "{{ host }}"
+      - "localhost"
+{% endfor %}
+{% for host in groups['kibana'] %}
+  - name: "{{ host }}"
+    ip:
+      - "{{ hostvars[host]['ansible_host'] }}"
+    dns:
+      - "{{ host }}"
+      - "localhost"
+{% endfor %}
+{% for host in groups['logstash'] %}
+  - name: "{{ host }}"
+    ip:
+      - "{{ hostvars[host]['ansible_host'] }}"
+    dns:
+      - "{{ host }}"
+      - "localhost"
+{% endfor %}

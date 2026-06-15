@@ -1,0 +1,36 @@
+# ============================================================================
+# Phase 7 : Post-déploiement - Monitoring Beats + Snapshots + ILM
+# Déploie Metricbeat, Auditbeat, Filebeat sur tous les nœuds
+# Déploie Heartbeat sur les load balancers
+# Configure les snapshots et ILM
+# ============================================================================
+---
+- name: Déployer Metricbeat sur tous les nœuds
+  hosts: all
+  become: true
+  roles:
+    - metricbeat
+
+- name: Déployer Auditbeat sur tous les nœuds
+  hosts: all
+  become: true
+  roles:
+    - auditbeat
+
+- name: Déployer Filebeat sur tous les nœuds
+  hosts: all
+  become: true
+  roles:
+    - filebeat
+
+- name: Déployer Heartbeat sur les load balancers
+  hosts: loadbalancers
+  become: true
+  roles:
+    - heartbeat
+
+- name: Configurer les snapshots et ILM
+  hosts: elasticsearch
+  become: true
+  roles:
+    - snapshot

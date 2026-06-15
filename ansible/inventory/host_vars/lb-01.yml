@@ -1,0 +1,4 @@
+# lb-01 host variables
+ansible_host: 10.110.188.50
+keepalived_priority: 101
+keepalived_state: MASTER

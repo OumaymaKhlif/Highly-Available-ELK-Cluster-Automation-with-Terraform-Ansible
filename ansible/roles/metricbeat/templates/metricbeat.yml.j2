@@ -1,0 +1,76 @@
+# ============================================================================
+# Configuration Metricbeat - Générée par Ansible
+# Nœud: {{ inventory_hostname }}
+# ============================================================================
+
+# --- Output vers Elasticsearch (coordinating nodes) ---
+output.elasticsearch:
+  hosts:
+{% for ip in es_coordinating_nodes %}
+    - "https://{{ ip }}:9200"
+{% endfor %}
+  username: "beats_writer"
+  password: "{{ es_beats_password }}"
+  ssl.certificate_authorities:
+    - "/etc/metricbeat/certs/ca.crt"
+  ssl.verification_mode: "certificate"
+
+# --- Kibana (pour les dashboards) ---
+setup.kibana:
+  host: "https://{{ groups['kibana'][0] }}:5601"
+  ssl.certificate_authorities:
+    - "/etc/metricbeat/certs/ca.crt"
+  ssl.verification_mode: "certificate"
+
+# --- Modules ---
+metricbeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: false
+
+# --- Module System ---
+metricbeat.modules:
+  - module: system
+    period: 10s
+    metricsets:
+      - cpu
+      - load
+      - memory
+      - network
+      - process
+      - process_summary
+      - socket_summary
+      - filesystem
+      - diskio
+    processes: ['.*']
+    process.include_top_n:
+      by_cpu: 5
+      by_memory: 5
+
+{% if inventory_hostname in groups.get('elasticsearch', []) %}
+  # --- Module Elasticsearch (uniquement sur les nœuds ES) ---
+  - module: elasticsearch
+    xpack.enabled: true
+    period: 10s
+    hosts:
+      - "https://{{ ansible_host }}:9200"
+    username: "elastic"
+    password: "{{ es_elastic_password }}"
+    ssl.certificate_authorities:
+      - "/etc/metricbeat/certs/ca.crt"
+    ssl.verification_mode: "certificate"
+{% endif %}
+
+# --- Processeurs ---
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+
+# --- Logging ---
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/metricbeat
+  name: metricbeat
+  keepfiles: 7
+  permissions: 0644

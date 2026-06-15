@@ -1,0 +1,70 @@
+# ============================================================================
+# Variables globales - Appliquées à TOUS les hôtes
+# ============================================================================
+
+# --- Stack Elastic ---
+elastic_version: "9.4.1"
+es_cluster_name: "elk-ha-cluster"
+
+# --- Réseau ---
+network_subnet: "10.110.188.0/22"
+network_gateway: "10.110.188.1"
+
+# --- Utilisateur SSH ---
+ansible_user: ubuntu
+ansible_ssh_private_key_file: "~/.ssh/elk_key"
+
+# --- DNS interne (tous les nœuds) ---
+etc_hosts_entries:
+  - { ip: "10.110.188.10", hostname: "es-master-01" }
+  - { ip: "10.110.188.11", hostname: "es-master-02" }
+  - { ip: "10.110.188.12", hostname: "es-master-03" }
+  - { ip: "10.110.188.13", hostname: "es-data-01" }
+  - { ip: "10.110.188.14", hostname: "es-data-02" }
+  - { ip: "10.110.188.15", hostname: "es-data-03" }
+  - { ip: "10.110.188.20", hostname: "es-coord-01" }
+  - { ip: "10.110.188.21", hostname: "es-coord-02" }
+  - { ip: "10.110.188.30", hostname: "logstash-01" }
+  - { ip: "10.110.188.31", hostname: "logstash-02" }
+  - { ip: "10.110.188.40", hostname: "kibana-01" }
+  - { ip: "10.110.188.41", hostname: "kibana-02" }
+  - { ip: "10.110.188.50", hostname: "lb-01" }
+  - { ip: "10.110.188.51", hostname: "lb-02" }
+
+# --- Elasticsearch: nœuds master pour discovery ---
+es_master_nodes:
+  - "10.110.188.10"
+  - "10.110.188.11"
+  - "10.110.188.12"
+
+es_initial_master_nodes:
+  - "es-master-01"
+  - "es-master-02"
+  - "es-master-03"
+
+# --- Elasticsearch: nœuds coordinating (pour Kibana/Logstash/HAProxy) ---
+es_coordinating_nodes:
+  - "10.110.188.20"
+  - "10.110.188.21"
+
+# --- Sécurité: mots de passe (à chiffrer avec ansible-vault en production) ---
+es_elastic_password: "Ch@ngeMe!ELK2024"
+es_kibana_password: "K1bana$ecure2024"
+es_logstash_password: "L0gstash$ecure2024"
+es_beats_password: "B3ats$ecure2024"
+
+# --- Certificats ---
+es_certs_dir: "/etc/elasticsearch/certs"
+es_ca_pass: "ElasticCA2026"
+
+# --- Snapshot ---
+es_snapshot_repo_path: "/mnt/es-snapshots"
+es_snapshot_repo_name: "elk_backup"
+
+# --- Auditbeat ---
+auditbeat_fim_paths:
+  - "/bin"
+  - "/usr/bin"
+  - "/sbin"
+  - "/usr/sbin"
+  - "/etc"

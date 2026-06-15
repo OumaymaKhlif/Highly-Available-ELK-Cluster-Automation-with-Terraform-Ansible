@@ -1,0 +1,37 @@
+# ============================================================================
+# Playbook principal - Déploiement complet du cluster ELK HA
+# Usage: ansible-playbook playbooks/site.yml
+# ============================================================================
+---
+- name: "Phase 0 : Préparation de tous les nœuds"
+  import_playbook: 00-prerequisites.yml
+
+- name: "Phase 1 : Déploiement Elasticsearch"
+  import_playbook: 01-elasticsearch.yml
+
+- name: "Phase 2 : Sécurité TLS et certificats"
+  import_playbook: 02-security.yml
+
+- name: "Phase 3 : Démarrage Elasticsearch et post-config"
+  import_playbook: 03-start-elasticsearch.yml
+
+- name: "Phase 4 : Déploiement Kibana"
+  import_playbook: 04-kibana.yml
+
+- name: "Phase 5 : Déploiement Logstash"
+  import_playbook: 05-logstash.yml
+
+- name: "Phase 6 : Déploiement HAProxy"
+  import_playbook: 06-haproxy.yml
+
+- name: "Phase 7 : Configuration post-déploiement"
+  import_playbook: 07-post-deploy.yml
+
+- name: "Phase 8 : Snapshots et ILM"
+  import_playbook: 08-snapshot-ilm.yml
+
+- name: "Phase 9 : Audit de sécurité"
+  import_playbook: 09-security-audit.yml
+
+- name: "Phase 10 : Alerting Kibana"
+  import_playbook: 10-alerting.yml

@@ -1,0 +1,8 @@
+# ============================================================================
+# Handlers du rôle filebeat
+# ============================================================================
+---
+- name: Redémarrer Filebeat
+  ansible.builtin.systemd:
+    name: filebeat
+    state: restarted

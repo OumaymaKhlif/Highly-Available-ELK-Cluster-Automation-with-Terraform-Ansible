@@ -1,0 +1,62 @@
+# ============================================================================
+# Pipeline Logstash - Audit Filebeat
+# Traitement des logs Filebeat (Kibana, Elasticsearch, System, HAProxy)
+# ============================================================================
+
+input {
+  beats {
+    port => 5044
+  }
+}
+
+filter {
+  if [event][module] == "kibana" {
+    useragent {
+      source => "[kibana][access][agent]"
+      target => "user_agent"
+    }
+    geoip {
+      source => "[source][ip]"
+      target => "geoip"
+    }
+  }
+
+  if [event][module] == "system" {
+    mutate {
+      add_field => { "[audit][type]" => "system_auth" }
+    }
+  }
+
+  if [event][module] == "elasticsearch" {
+    mutate {
+      add_field => { "[audit][type]" => "es_access" }
+    }
+  }
+
+  if [event][module] == "haproxy" {
+    mutate {
+      add_field => { "[audit][type]" => "haproxy_access" }
+    }
+  }
+
+  # Enrichissement commun
+  mutate {
+    add_field => { "logstash_node" => "{{ inventory_hostname }}" }
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => [
+{% for ip in es_coordinating_nodes %}
+      "https://{{ ip }}:9200"{{ "," if not loop.last else "" }}
+{% endfor %}
+    ]
+    index => "filebeat-%{[event][module]}-%{+YYYY.MM.dd}"
+    user => "logstash_writer"
+    password => "{{ es_logstash_password }}"
+    ssl_enabled => true
+    ssl_certificate_authorities => "/etc/logstash/certs/ca.crt"
+    ssl_verification_mode => "certificate"
+  }
+}

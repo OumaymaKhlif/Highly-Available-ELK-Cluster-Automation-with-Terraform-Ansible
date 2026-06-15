@@ -1,0 +1,8 @@
+# ============================================================================
+# Handlers du rôle metricbeat
+# ============================================================================
+---
+- name: Redémarrer Metricbeat
+  ansible.builtin.systemd:
+    name: metricbeat
+    state: restarted

@@ -1,0 +1,8 @@
+# ============================================================================
+# Handlers du rôle logstash
+# ============================================================================
+---
+- name: Redémarrer Logstash
+  ansible.builtin.systemd:
+    name: logstash
+    state: restarted

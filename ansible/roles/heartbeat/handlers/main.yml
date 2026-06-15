@@ -1,0 +1,8 @@
+# ============================================================================
+# Handlers du rôle heartbeat
+# ============================================================================
+---
+- name: Redémarrer Heartbeat
+  ansible.builtin.systemd:
+    name: heartbeat-elastic
+    state: restarted

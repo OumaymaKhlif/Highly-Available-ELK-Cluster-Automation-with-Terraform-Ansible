@@ -1,0 +1,4 @@
+# lb-02 host variables
+ansible_host: 10.110.188.51
+keepalived_priority: 100
+keepalived_state: BACKUP

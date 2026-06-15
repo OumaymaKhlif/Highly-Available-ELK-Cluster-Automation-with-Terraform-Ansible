@@ -1,0 +1,91 @@
+# ============================================================================
+# Configuration Auditbeat - Générée par Ansible
+# Nœud: {{ inventory_hostname }}
+# Modules: auditd, file_integrity, system
+# ============================================================================
+
+# --- Output vers Elasticsearch (coordinating nodes) ---
+output.elasticsearch:
+  hosts:
+{% for ip in es_coordinating_nodes %}
+    - "https://{{ ip }}:9200"
+{% endfor %}
+  username: "beats_writer"
+  password: "{{ es_beats_password }}"
+  ssl.certificate_authorities:
+    - "/etc/auditbeat/certs/ca.crt"
+  ssl.verification_mode: "certificate"
+
+# --- Kibana ---
+setup.kibana:
+  host: "https://{{ groups['kibana'][0] }}:5601"
+  ssl.certificate_authorities:
+    - "/etc/auditbeat/certs/ca.crt"
+  ssl.verification_mode: "certificate"
+
+# --- Modules Auditbeat ---
+auditbeat.modules:
+
+  # Module auditd - Audit kernel Linux
+  - module: auditd
+    audit_rules: |
+      ## Surveillance des commandes exécutées
+      -a always,exit -F arch=b64 -S execve -k exec_commands
+      -a always,exit -F arch=b32 -S execve -k exec_commands
+
+      ## Surveillance des connexions réseau
+      -a always,exit -F arch=b64 -S connect -k network_connect
+
+      ## Surveillance des modifications d'utilisateurs
+      -w /etc/passwd -p wa -k user_modification
+      -w /etc/shadow -p wa -k user_modification
+      -w /etc/group -p wa -k group_modification
+      -w /etc/sudoers -p wa -k sudoers_modification
+      -w /etc/sudoers.d/ -p wa -k sudoers_modification
+
+      ## Surveillance SSH
+      -w /etc/ssh/sshd_config -p wa -k sshd_config
+
+      ## Surveillance des fichiers de configuration ELK
+      -w /etc/elasticsearch/ -p wa -k elk_config
+      -w /etc/kibana/ -p wa -k elk_config
+      -w /etc/logstash/ -p wa -k elk_config
+      -w /etc/haproxy/ -p wa -k elk_config
+
+  # Module file_integrity - Surveillance des fichiers critiques
+  - module: file_integrity
+    paths:
+{% for path in auditbeat_fim_paths %}
+      - {{ path }}
+{% endfor %}
+    scan_at_start: true
+    scan_rate_per_sec: 50 MiB
+    max_file_size: 100 MiB
+    hash_types: [sha256]
+    recursive: true
+
+  # Module system - Logins, utilisateurs, processus
+  - module: system
+    datasets:
+      - host
+      - login
+      - process
+      - socket
+      - user
+    state.period: 12h
+    user.detect_password_changes: true
+
+# --- Processeurs ---
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+
+# --- Logging ---
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/auditbeat
+  name: auditbeat
+  keepfiles: 7
+  permissions: 0644

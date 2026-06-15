@@ -1,0 +1,9 @@
+# ============================================================================
+# Phase 8 : Configuration des snapshots et ILM (peut être lancé indépendamment)
+# ============================================================================
+---
+- name: Configurer les snapshots et ILM Elasticsearch
+  hosts: elasticsearch
+  become: true
+  roles:
+    - snapshot

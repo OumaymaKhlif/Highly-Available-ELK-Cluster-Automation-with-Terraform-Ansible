@@ -1,0 +1,158 @@
+# ============================================================================
+# Configuration Heartbeat - Générée par Ansible
+# Nœud: {{ inventory_hostname }}
+# Surveillance uptime de tous les services du cluster
+# ============================================================================
+
+# --- Output vers Elasticsearch (coordinating nodes) ---
+output.elasticsearch:
+  hosts:
+{% for ip in es_coordinating_nodes %}
+    - "https://{{ ip }}:9200"
+{% endfor %}
+  username: "beats_writer"
+  password: "{{ es_beats_password }}"
+  ssl.certificate_authorities:
+    - "/etc/heartbeat/certs/ca.crt"
+  ssl.verification_mode: "certificate"
+
+# --- Kibana ---
+setup.kibana:
+  host: "https://{{ groups['kibana'][0] }}:5601"
+  ssl.certificate_authorities:
+    - "/etc/heartbeat/certs/ca.crt"
+  ssl.verification_mode: "certificate"
+
+# --- Moniteurs ---
+heartbeat.monitors:
+
+  # Elasticsearch Coordinating Nodes (HTTPS)
+  - type: http
+    id: es-coord-01
+    name: "ES Coordinating 1"
+    schedule: '@every 10s'
+    urls:
+      - "https://10.110.188.20:9200"
+    ssl.certificate_authorities:
+      - "/etc/heartbeat/certs/ca.crt"
+    ssl.verification_mode: "certificate"
+    check.response.status: [200, 401]
+
+  - type: http
+    id: es-coord-02
+    name: "ES Coordinating 2"
+    schedule: '@every 10s'
+    urls:
+      - "https://10.110.188.21:9200"
+    ssl.certificate_authorities:
+      - "/etc/heartbeat/certs/ca.crt"
+    ssl.verification_mode: "certificate"
+    check.response.status: [200, 401]
+
+  # Elasticsearch Master Nodes (TCP transport)
+  - type: tcp
+    id: es-master-01
+    name: "ES Master 1"
+    schedule: '@every 30s'
+    hosts:
+      - "10.110.188.10:9300"
+
+  - type: tcp
+    id: es-master-02
+    name: "ES Master 2"
+    schedule: '@every 30s'
+    hosts:
+      - "10.110.188.11:9300"
+
+  - type: tcp
+    id: es-master-03
+    name: "ES Master 3"
+    schedule: '@every 30s'
+    hosts:
+      - "10.110.188.12:9300"
+
+  # Elasticsearch Data Nodes (TCP HTTP)
+  - type: tcp
+    id: es-data-01
+    name: "ES Data 1"
+    schedule: '@every 30s'
+    hosts:
+      - "10.110.188.13:9200"
+
+  - type: tcp
+    id: es-data-02
+    name: "ES Data 2"
+    schedule: '@every 30s'
+    hosts:
+      - "10.110.188.14:9200"
+
+  - type: tcp
+    id: es-data-03
+    name: "ES Data 3"
+    schedule: '@every 30s'
+    hosts:
+      - "10.110.188.15:9200"
+
+  # Kibana Nodes (HTTPS)
+  - type: http
+    id: kibana-01
+    name: "Kibana 1"
+    schedule: '@every 15s'
+    urls:
+      - "https://10.110.188.40:5601"
+    ssl.certificate_authorities:
+      - "/etc/heartbeat/certs/ca.crt"
+    ssl.verification_mode: "certificate"
+    check.response.status: [200, 302]
+
+  - type: http
+    id: kibana-02
+    name: "Kibana 2"
+    schedule: '@every 15s'
+    urls:
+      - "https://10.110.188.41:5601"
+    ssl.certificate_authorities:
+      - "/etc/heartbeat/certs/ca.crt"
+    ssl.verification_mode: "certificate"
+    check.response.status: [200, 302]
+
+  # Logstash Nodes (TCP Beats input)
+  - type: tcp
+    id: logstash-01
+    name: "Logstash 1"
+    schedule: '@every 15s'
+    hosts:
+      - "10.110.188.30:5044"
+
+  - type: tcp
+    id: logstash-02
+    name: "Logstash 2"
+    schedule: '@every 15s'
+    hosts:
+      - "10.110.188.31:5044"
+
+  # VIP HAProxy (HTTPS Kibana)
+  - type: http
+    id: vip-haproxy
+    name: "VIP HAProxy"
+    schedule: '@every 10s'
+    urls:
+      - "https://10.110.188.60:5601"
+    ssl.certificate_authorities:
+      - "/etc/heartbeat/certs/ca.crt"
+    ssl.verification_mode: "none"
+    check.response.status: [200, 302]
+
+# --- Processeurs ---
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+
+# --- Logging ---
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/heartbeat
+  name: heartbeat
+  keepfiles: 7
+  permissions: 0644

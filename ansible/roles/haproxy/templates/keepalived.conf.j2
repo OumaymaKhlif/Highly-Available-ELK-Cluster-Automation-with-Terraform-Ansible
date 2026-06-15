@@ -1,0 +1,31 @@
+# ============================================================================
+# Configuration Keepalived - Générée par Ansible
+# Nœud: {{ inventory_hostname }}
+# ============================================================================
+
+vrrp_instance VI_ELK {
+    state {{ keepalived_state }}
+    interface {{ keepalived_interface }}
+    virtual_router_id 51
+    priority {{ keepalived_priority }}
+    advert_int 1
+
+    authentication {
+        auth_type PASS
+        auth_pass ELKha2024
+    }
+
+    virtual_ipaddress {
+        {{ keepalived_vip }}/22
+    }
+
+    track_script {
+        chk_haproxy
+    }
+}
+
+vrrp_script chk_haproxy {
+    script "pidof haproxy"
+    interval 2
+    weight 2
+}

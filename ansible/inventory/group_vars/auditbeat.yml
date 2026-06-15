@@ -1,0 +1,20 @@
+# ============================================================================
+# Variables Auditbeat - Déployé sur tous les nœuds (14 VMs)
+# ============================================================================
+auditbeat_version: "{{ elastic_version }}"
+
+# Fichiers surveillés par le module file_integrity
+auditbeat_fim_paths:
+  - /etc/passwd
+  - /etc/shadow
+  - /etc/sudoers
+  - /etc/sudoers.d
+  - /etc/ssh/sshd_config
+  - /etc/elasticsearch
+  - /etc/kibana
+  - /etc/logstash
+  - /etc/haproxy
+  - /etc/keepalived
+
+# Intervalle de scan file_integrity
+auditbeat_fim_scan_interval: "1m"

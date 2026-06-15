@@ -1,0 +1,21 @@
+{
+  "name": "SSH Bruteforce Detection",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "schedule": {
+    "interval": "{{ alert_check_interval }}"
+  },
+  "params": {
+    "index": ["filebeat-system-*"],
+    "timeField": "@timestamp",
+    "esQuery": "{\"query\":{\"bool\":{\"must\":[{\"match\":{\"event.action\":\"ssh_login\"}},{\"match\":{\"event.outcome\":\"failure\"}}],\"filter\":[{\"range\":{\"@timestamp\":{\"gte\":\"now-1m\"}}}]}}}",
+    "threshold": [{{ alert_ssh_threshold }}],
+    "thresholdComparator": ">=",
+    "size": 100,
+    "timeWindowSize": 1,
+    "timeWindowUnit": "m"
+  },
+  "actions": [],
+  "tags": ["security", "ssh", "bruteforce"],
+  "enabled": true
+}

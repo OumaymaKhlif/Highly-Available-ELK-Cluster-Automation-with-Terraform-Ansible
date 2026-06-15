@@ -1,0 +1,24 @@
+#!/bin/bash
+# ============================================================================
+# Création du dépôt de snapshots Elasticsearch
+# ============================================================================
+set -euo pipefail
+
+ES_HOST="https://{{ ansible_host }}:9200"
+ELASTIC_PASSWORD="{{ es_elastic_password }}"
+CA_CERT="{{ es_certs_dir }}/ca.crt"
+
+echo "=== Enregistrement du dépôt de snapshots ==="
+curl -sk -u "elastic:${ELASTIC_PASSWORD}" \
+  -X PUT "${ES_HOST}/_snapshot/{{ es_snapshot_repo_name }}" \
+  -H "Content-Type: application/json" \
+  --cacert "${CA_CERT}" \
+  -d '{
+    "type": "fs",
+    "settings": {
+      "location": "{{ es_snapshot_repo_path }}",
+      "compress": true
+    }
+  }'
+echo ""
+echo "=== Dépôt créé avec succès ==="

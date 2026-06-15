@@ -1,0 +1,39 @@
+# ============================================================================
+# Configuration Filebeat - Générée par Ansible
+# Nœud: {{ inventory_hostname }}
+# ============================================================================
+
+# --- Output vers Logstash (Beats input port 5044) ---
+output.logstash:
+  hosts:
+{% for host in groups['logstash'] %}
+    - "{{ hostvars[host]['ansible_host'] }}:5044"
+{% endfor %}
+  loadbalance: true
+
+# --- Kibana (pour les dashboards) ---
+setup.kibana:
+  host: "https://{{ groups['kibana'][0] }}:5601"
+  ssl.certificate_authorities:
+    - "/etc/filebeat/certs/ca.crt"
+  ssl.verification_mode: "certificate"
+
+# --- Modules ---
+filebeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: false
+
+# --- Processeurs ---
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+
+# --- Logging ---
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644

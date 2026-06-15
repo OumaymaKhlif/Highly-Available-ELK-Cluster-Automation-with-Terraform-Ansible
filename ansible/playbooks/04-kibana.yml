@@ -1,0 +1,9 @@
+# ============================================================================
+# Phase 4 : Déploiement de Kibana sur les nœuds Kibana
+# ============================================================================
+---
+- name: Installer et configurer Kibana
+  hosts: kibana
+  become: true
+  roles:
+    - kibana

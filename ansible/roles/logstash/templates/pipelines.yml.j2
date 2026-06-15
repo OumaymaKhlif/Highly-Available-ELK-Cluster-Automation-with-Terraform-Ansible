@@ -1,0 +1,12 @@
+# ============================================================================
+# Pipelines Logstash - Générée par Ansible
+# ============================================================================
+- pipeline.id: main
+  path.config: "/etc/logstash/conf.d/pipeline.conf"
+  pipeline.workers: {{ logstash_pipeline_workers }}
+  pipeline.batch.size: {{ logstash_pipeline_batch_size }}
+
+- pipeline.id: filebeat-audit
+  path.config: "/etc/logstash/conf.d/filebeat-audit-pipeline.conf"
+  pipeline.workers: 1
+  pipeline.batch.size: 125

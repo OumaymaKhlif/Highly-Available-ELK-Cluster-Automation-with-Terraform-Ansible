@@ -1,0 +1,9 @@
+# ============================================================================
+# Phase 1 : Installation et configuration d'Elasticsearch sur tous les nœuds ES
+# ============================================================================
+---
+- name: Installer et configurer Elasticsearch
+  hosts: elasticsearch
+  become: true
+  roles:
+    - elasticsearch

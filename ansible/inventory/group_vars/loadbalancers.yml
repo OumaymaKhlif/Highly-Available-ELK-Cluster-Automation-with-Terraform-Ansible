@@ -1,0 +1,8 @@
+# ============================================================================
+# Variables spécifiques aux Load Balancers
+# ============================================================================
+haproxy_stats_port: 8404
+haproxy_stats_user: "admin"
+haproxy_stats_password: "HAProxy$tats2024"
+keepalived_vip: "10.110.188.60"
+keepalived_interface: "eth0"

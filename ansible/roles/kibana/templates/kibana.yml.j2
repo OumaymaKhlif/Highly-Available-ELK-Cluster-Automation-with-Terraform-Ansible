@@ -1,0 +1,41 @@
+# ============================================================================
+# Configuration Kibana - Générée par Ansible
+# Nœud: {{ inventory_hostname }}
+# ============================================================================
+
+# --- Serveur ---
+server.port: {{ kibana_server_port }}
+server.host: "{{ kibana_server_host }}"
+server.name: "{{ inventory_hostname }}"
+
+# --- Connexion Elasticsearch (via les coordinating nodes) ---
+elasticsearch.hosts:
+{% for ip in es_coordinating_nodes %}
+  - "https://{{ ip }}:9200"
+{% endfor %}
+
+# --- Authentification ---
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "{{ es_kibana_password }}"
+
+# --- TLS vers Elasticsearch ---
+elasticsearch.ssl.certificateAuthorities: ["/etc/kibana/certs/ca.crt"]
+elasticsearch.ssl.verificationMode: certificate
+
+# --- HTTPS Kibana ---
+server.ssl.enabled: true
+server.ssl.certificate: "/etc/kibana/certs/{{ inventory_hostname }}.crt"
+server.ssl.key: "/etc/kibana/certs/{{ inventory_hostname }}.key"
+
+# --- Clés de chiffrement (obligatoires pour les alertes et actions) ---
+xpack.security.encryptionKey: "a]3F$kL9p2Qz!vR7mX5nW8hJ0bY6dT4c"
+xpack.encryptedSavedObjects.encryptionKey: "b]8G#mP3sW7xA0dL5nQ9kR2jF6hV4tY1"
+xpack.reporting.encryptionKey: "c]2H@nQ4tX8yB1eM6oR0lS3kG7iW5uZ9"
+
+# --- Logging ---
+logging.root.level: info
+
+# --- Audit Logging ---
+xpack.security.audit.enabled: true
+xpack.security.audit.ignore_filters:
+  - actions: [space_find]

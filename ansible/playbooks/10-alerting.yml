@@ -1,0 +1,9 @@
+# ============================================================================
+# Phase 10 : Déploiement des alertes Kibana
+# ============================================================================
+---
+- name: Configurer les alertes Kibana
+  hosts: es_masters[0]
+  become: true
+  roles:
+    - alerting

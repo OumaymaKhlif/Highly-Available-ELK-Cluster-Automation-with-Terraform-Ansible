@@ -1,0 +1,3 @@
+# es-data-02 host variables
+ansible_host: 10.110.188.14
+es_node_name: es-data-02

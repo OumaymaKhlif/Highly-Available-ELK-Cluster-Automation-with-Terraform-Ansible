@@ -1,0 +1,11 @@
+# Module elasticsearch - server, gc, audit logs
+- module: elasticsearch
+  server:
+    enabled: true
+    var.paths: ["/var/log/elasticsearch/{{ es_cluster_name }}.log"]
+  gc:
+    enabled: true
+    var.paths: ["/var/log/elasticsearch/gc.log"]
+  audit:
+    enabled: true
+    var.paths: ["/var/log/elasticsearch/{{ es_cluster_name }}_audit.json"]

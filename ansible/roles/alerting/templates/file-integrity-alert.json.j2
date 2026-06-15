@@ -1,0 +1,21 @@
+{
+  "name": "File Integrity - Critical File Modified",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "schedule": {
+    "interval": "{{ alert_check_interval }}"
+  },
+  "params": {
+    "index": ["auditbeat-*"],
+    "timeField": "@timestamp",
+    "esQuery": "{\"query\":{\"bool\":{\"must\":[{\"match\":{\"event.module\":\"file_integrity\"}},{\"terms\":{\"file.path\":[\"/etc/passwd\",\"/etc/shadow\",\"/etc/sudoers\",\"/etc/ssh/sshd_config\"]}}],\"filter\":[{\"range\":{\"@timestamp\":{\"gte\":\"now-5m\"}}}]}}}",
+    "threshold": [1],
+    "thresholdComparator": ">=",
+    "size": 100,
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m"
+  },
+  "actions": [],
+  "tags": ["security", "file-integrity", "critical"],
+  "enabled": true
+}

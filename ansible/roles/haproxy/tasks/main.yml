@@ -1,0 +1,73 @@
+# ============================================================================
+# Rôle: haproxy - Load Balancer pour Kibana et Elasticsearch
+# ============================================================================
+---
+- name: Installer HAProxy et Keepalived
+  ansible.builtin.apt:
+    name:
+      - haproxy
+      - keepalived
+    state: present
+
+- name: Créer le répertoire des certificats HAProxy
+  ansible.builtin.file:
+    path: /etc/haproxy/certs
+    state: directory
+    owner: haproxy
+    group: haproxy
+    mode: "0750"
+
+- name: Copier le certificat CA
+  ansible.builtin.copy:
+    src: "/tmp/elk-certs/ca.crt"
+    dest: /etc/haproxy/certs/ca.crt
+    owner: haproxy
+    group: haproxy
+    mode: "0640"
+
+- name: Déployer la configuration HAProxy
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "haproxy -c -f %s"
+  notify: Redémarrer HAProxy
+
+- name: Déployer la configuration Keepalived
+  ansible.builtin.copy:
+    dest: /etc/keepalived/keepalived.conf
+    content: |
+      vrrp_instance VI_ELK {
+          state {{ keepalived_state }}
+          interface {{ keepalived_interface }}
+          virtual_router_id 51
+          priority {{ keepalived_priority }}
+          advert_int 1
+
+          authentication {
+              auth_type PASS
+              auth_pass ELKha2024
+          }
+
+          virtual_ipaddress {
+              {{ keepalived_vip }}/22
+          }
+      }
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Redémarrer Keepalived
+
+- name: Activer et démarrer HAProxy
+  ansible.builtin.systemd:
+    name: haproxy
+    state: started
+    enabled: yes
+
+- name: Activer et démarrer Keepalived
+  ansible.builtin.systemd:
+    name: keepalived
+    state: started
+    enabled: yes

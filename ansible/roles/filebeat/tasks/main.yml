@@ -1,0 +1,139 @@
+# ============================================================================
+# Rôle: filebeat - Collecte des logs applicatifs et système
+# Déployé sur tous les nœuds (14 VMs)
+# ============================================================================
+---
+- name: Installer Filebeat {{ elastic_version }}
+  ansible.builtin.apt:
+    name: "filebeat={{ elastic_version }}"
+    state: present
+    allow_downgrade: yes
+
+- name: Créer le répertoire des certificats Filebeat
+  ansible.builtin.file:
+    path: /etc/filebeat/certs
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Copier le certificat CA
+  ansible.builtin.copy:
+    src: "/tmp/elk-certs/ca.crt"
+    dest: /etc/filebeat/certs/ca.crt
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Déployer la configuration filebeat.yml
+  ansible.builtin.template:
+    src: filebeat.yml.j2
+    dest: /etc/filebeat/filebeat.yml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Redémarrer Filebeat
+
+- name: Activer le module system
+  ansible.builtin.command: filebeat modules enable system
+  args:
+    creates: /etc/filebeat/modules.d/system.yml
+  notify: Redémarrer Filebeat
+
+- name: Déployer la configuration du module system
+  ansible.builtin.template:
+    src: filebeat-modules.d/system.yml.j2
+    dest: /etc/filebeat/modules.d/system.yml
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Redémarrer Filebeat
+
+- name: Activer le module elasticsearch (nœuds ES uniquement)
+  ansible.builtin.command: filebeat modules enable elasticsearch
+  args:
+    creates: /etc/filebeat/modules.d/elasticsearch.yml
+  when: inventory_hostname in groups.get('elasticsearch', [])
+  notify: Redémarrer Filebeat
+
+- name: Déployer la configuration du module elasticsearch
+  ansible.builtin.template:
+    src: filebeat-modules.d/elasticsearch.yml.j2
+    dest: /etc/filebeat/modules.d/elasticsearch.yml
+    owner: root
+    group: root
+    mode: "0644"
+  when: inventory_hostname in groups.get('elasticsearch', [])
+  notify: Redémarrer Filebeat
+
+- name: Activer le module kibana (nœuds Kibana uniquement)
+  ansible.builtin.command: filebeat modules enable kibana
+  args:
+    creates: /etc/filebeat/modules.d/kibana.yml
+  when: inventory_hostname in groups.get('kibana', [])
+  notify: Redémarrer Filebeat
+
+- name: Déployer la configuration du module kibana
+  ansible.builtin.template:
+    src: filebeat-modules.d/kibana.yml.j2
+    dest: /etc/filebeat/modules.d/kibana.yml
+    owner: root
+    group: root
+    mode: "0644"
+  when: inventory_hostname in groups.get('kibana', [])
+  notify: Redémarrer Filebeat
+
+- name: Activer le module logstash (nœuds Logstash uniquement)
+  ansible.builtin.command: filebeat modules enable logstash
+  args:
+    creates: /etc/filebeat/modules.d/logstash.yml
+  when: inventory_hostname in groups.get('logstash', [])
+  notify: Redémarrer Filebeat
+
+- name: Déployer la configuration du module logstash
+  ansible.builtin.template:
+    src: filebeat-modules.d/logstash.yml.j2
+    dest: /etc/filebeat/modules.d/logstash.yml
+    owner: root
+    group: root
+    mode: "0644"
+  when: inventory_hostname in groups.get('logstash', [])
+  notify: Redémarrer Filebeat
+
+- name: Activer le module haproxy (LB uniquement)
+  ansible.builtin.command: filebeat modules enable haproxy
+  args:
+    creates: /etc/filebeat/modules.d/haproxy.yml
+  when: inventory_hostname in groups.get('loadbalancers', [])
+  notify: Redémarrer Filebeat
+
+- name: Déployer la configuration du module haproxy
+  ansible.builtin.template:
+    src: filebeat-modules.d/haproxy.yml.j2
+    dest: /etc/filebeat/modules.d/haproxy.yml
+    owner: root
+    group: root
+    mode: "0644"
+  when: inventory_hostname in groups.get('loadbalancers', [])
+  notify: Redémarrer Filebeat
+
+- name: Charger les dashboards Filebeat (une seule fois)
+  ansible.builtin.command: >
+    filebeat setup --dashboards
+    -E output.logstash.enabled=false
+    -E output.elasticsearch.hosts=["https://{{ es_coordinating_nodes[0] }}:9200"]
+    -E output.elasticsearch.username=elastic
+    -E output.elasticsearch.password={{ es_elastic_password }}
+    -E output.elasticsearch.ssl.certificate_authorities=["/etc/filebeat/certs/ca.crt"]
+    -E setup.kibana.host=https://{{ groups['kibana'][0] }}:5601
+    -E setup.kibana.username=elastic
+    -E setup.kibana.password={{ es_elastic_password }}
+    -E setup.kibana.ssl.certificate_authorities=["/etc/filebeat/certs/ca.crt"]
+  when: inventory_hostname == groups['all'][0]
+  ignore_errors: true
+
+- name: Activer et démarrer Filebeat
+  ansible.builtin.systemd:
+    name: filebeat
+    state: started
+    enabled: yes

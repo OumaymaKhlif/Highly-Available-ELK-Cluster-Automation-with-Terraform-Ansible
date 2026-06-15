@@ -1,0 +1,262 @@
+# ============================================================================
+# Phase 3 : Démarrage d'Elasticsearch et configuration post-démarrage
+# ============================================================================
+---
+- name: Démarrer les master nodes en parallèle
+  hosts: es_masters
+  become: true
+  tasks:
+    - name: Démarrer Elasticsearch sur les masters
+      ansible.builtin.systemd:
+        name: elasticsearch
+        state: started
+        enabled: yes
+
+    - name: Attendre que le port 9200 soit ouvert sur les masters
+      ansible.builtin.wait_for:
+        port: 9200
+        host: "{{ ansible_host }}"
+        state: started
+        timeout: 90
+
+- name: Démarrer les data nodes en parallèle
+  hosts: es_data
+  become: true
+  tasks:
+    - name: Démarrer Elasticsearch sur les data nodes
+      ansible.builtin.systemd:
+        name: elasticsearch
+        state: started
+        enabled: yes
+
+    - name: Attendre que le port 9200 soit ouvert sur les data nodes
+      ansible.builtin.wait_for:
+        port: 9200
+        host: "{{ ansible_host }}"
+        state: started
+        timeout: 90
+
+- name: Démarrer les coordinating nodes en parallèle
+  hosts: es_coordinating
+  become: true
+  tasks:
+    - name: Démarrer Elasticsearch sur les coordinating nodes
+      ansible.builtin.systemd:
+        name: elasticsearch
+        state: started
+        enabled: yes
+
+    - name: Attendre que le port 9200 soit ouvert sur les coordinating nodes
+      ansible.builtin.wait_for:
+        port: 9200
+        host: "{{ ansible_host }}"
+        state: started
+        timeout: 90
+
+- name: Initialiser ou réinitialiser le mot de passe elastic
+  hosts: es_masters[0]
+  become: true
+  tasks:
+    - name: Tester l'authentification avec le mot de passe configure
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: GET
+      register: es_auth_test
+      failed_when: false
+      changed_when: false
+
+    - name: Reinitialiser le mot de passe elastic si non authentifie (401)
+      ansible.builtin.shell: |
+        printf "y\n{{ es_elastic_password }}\n{{ es_elastic_password }}\n" | /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic -i -f --url "https://{{ ansible_host }}:9200"
+      when: es_auth_test.status == 401
+      register: es_password_reset
+
+- name: Attendre que tous les master nodes soient prêts et synchronisés
+  hosts: es_masters
+  become: true
+  tasks:
+    - name: Attendre qu'Elasticsearch soit prêt sur ce master
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/_cluster/health"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: GET
+        status_code: 200
+      register: es_health
+      retries: 30
+      delay: 5
+      until: es_health.status == 200
+
+- name: Démarrer les data nodes
+  hosts: es_data
+  become: true
+  tasks:
+    - name: Démarrer Elasticsearch sur les data nodes
+      ansible.builtin.systemd:
+        name: elasticsearch
+        state: started
+        enabled: yes
+
+    - name: Attendre qu'Elasticsearch soit prêt
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/_cluster/health"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: GET
+        status_code: 200
+      register: es_health
+      retries: 30
+      delay: 10
+      until: es_health.status == 200
+
+- name: Démarrer les coordinating nodes
+  hosts: es_coordinating
+  become: true
+  tasks:
+    - name: Démarrer Elasticsearch sur les coordinating nodes
+      ansible.builtin.systemd:
+        name: elasticsearch
+        state: started
+        enabled: yes
+
+    - name: Attendre qu'Elasticsearch soit prêt
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/_cluster/health"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: GET
+        status_code: 200
+      register: es_health
+      retries: 30
+      delay: 10
+      until: es_health.status == 200
+
+- name: Configurer les mots de passe des utilisateurs built-in
+  hosts: es_masters[0]
+  become: true
+  tasks:
+    - name: Attendre que le cluster soit GREEN ou YELLOW
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/_cluster/health"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: GET
+        return_content: yes
+      register: cluster_status
+      retries: 30
+      delay: 10
+      until: cluster_status.json.status in ['green', 'yellow']
+
+    - name: Configurer le mot de passe kibana_system
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/_security/user/kibana_system/_password"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: POST
+        body_format: json
+        body:
+          password: "{{ es_kibana_password }}"
+        status_code: [200]
+
+    - name: Créer le rôle logstash_writer
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/_security/role/logstash_writer_role"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: PUT
+        body_format: json
+        body:
+          cluster:
+            - "manage_index_templates"
+            - "monitor"
+            - "manage_ilm"
+          indices:
+            - names:
+                - "logstash-*"
+                - "filebeat-*"
+                - "metricbeat-*"
+                - "auditbeat-*"
+                - "heartbeat-*"
+              privileges:
+                - "write"
+                - "create_index"
+                - "manage"
+                - "auto_configure"
+        status_code: [200]
+
+    - name: Créer l'utilisateur logstash_writer
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/_security/user/logstash_writer"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: POST
+        body_format: json
+        body:
+          password: "{{ es_logstash_password }}"
+          roles:
+            - "logstash_writer_role"
+          full_name: "Logstash Writer"
+        status_code: [200]
+
+    - name: Créer le rôle beats_writer
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/_security/role/beats_writer_role"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: PUT
+        body_format: json
+        body:
+          cluster:
+            - "manage_index_templates"
+            - "monitor"
+            - "manage_ilm"
+            - "manage_pipeline"
+          indices:
+            - names:
+                - "metricbeat-*"
+                - "auditbeat-*"
+                - "filebeat-*"
+                - "heartbeat-*"
+              privileges:
+                - "write"
+                - "create_index"
+                - "manage"
+                - "auto_configure"
+        status_code: [200]
+
+    - name: Créer l'utilisateur beats_writer
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/_security/user/beats_writer"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: POST
+        body_format: json
+        body:
+          password: "{{ es_beats_password }}"
+          roles:
+            - "beats_writer_role"
+            - "kibana_admin"
+          full_name: "Beats Writer"
+        status_code: [200]

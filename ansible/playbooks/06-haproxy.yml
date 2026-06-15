@@ -1,0 +1,9 @@
+# ============================================================================
+# Phase 6 : Déploiement HAProxy + Keepalived sur les load balancers
+# ============================================================================
+---
+- name: Installer et configurer HAProxy et Keepalived
+  hosts: loadbalancers
+  become: true
+  roles:
+    - haproxy

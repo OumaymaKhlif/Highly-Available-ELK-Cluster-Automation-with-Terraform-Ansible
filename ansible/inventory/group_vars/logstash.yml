@@ -1,0 +1,6 @@
+# ============================================================================
+# Variables spécifiques aux nœuds Logstash
+# ============================================================================
+logstash_heap_size: "1g"  # ~33% de 3 GB RAM
+logstash_pipeline_workers: 2
+logstash_pipeline_batch_size: 125

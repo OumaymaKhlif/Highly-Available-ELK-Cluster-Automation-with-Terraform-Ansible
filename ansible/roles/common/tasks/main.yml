@@ -1,0 +1,91 @@
+# ============================================================================
+# Rôle: common - Préparation système pour tous les nœuds
+# ============================================================================
+---
+- name: Définir le hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Mettre à jour /etc/hosts avec tous les nœuds du cluster
+  ansible.builtin.template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Mettre à jour le cache APT
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Installer les paquets prérequis
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - software-properties-common
+      - unzip
+      - jq
+      - net-tools
+    state: present
+
+- name: Désactiver le swap (runtime)
+  ansible.builtin.command: swapoff -a
+  changed_when: false
+
+- name: Désactiver le swap (persistant)
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^\s*[^#].*\sswap\s'
+    state: absent
+
+- name: Configurer les paramètres sysctl pour Elasticsearch
+  ansible.builtin.template:
+    src: sysctl.conf.j2
+    dest: /etc/sysctl.d/99-elasticsearch.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Recharger sysctl
+
+- name: Configurer les limites système (ulimits)
+  ansible.builtin.template:
+    src: limits.conf.j2
+    dest: /etc/security/limits.d/99-elasticsearch.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configurer le fuseau horaire (UTC)
+  ansible.builtin.timezone:
+    name: UTC
+
+- name: Activer et configurer NTP
+  ansible.builtin.apt:
+    name: chrony
+    state: present
+
+- name: S'assurer que chrony est actif
+  ansible.builtin.systemd:
+    name: chrony
+    state: started
+    enabled: yes
+
+- name: Ajouter la clé GPG Elastic
+  ansible.builtin.apt_key:
+    url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    state: present
+
+- name: Ajouter le dépôt APT Elastic 9.x
+  ansible.builtin.apt_repository:
+    repo: "deb https://artifacts.elastic.co/packages/9.x/apt stable main"
+    state: present
+    filename: elastic-9.x
+
+- name: Mettre à jour le cache APT après ajout du dépôt
+  ansible.builtin.apt:
+    update_cache: yes

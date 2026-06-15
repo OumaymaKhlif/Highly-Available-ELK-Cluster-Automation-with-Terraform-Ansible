@@ -1,0 +1,5 @@
+# ============================================================================
+# Variables spécifiques aux nœuds Coordinating Elasticsearch
+# ============================================================================
+es_node_roles: '[]'    # Aucun rôle = coordinating only
+es_heap_size: "512m"   # Réduit pour éviter OOM sur VM avec 2GB RAM

@@ -1,0 +1,74 @@
+# ============================================================================
+# Pipeline Logstash - Ingestion de logs
+# Entrées: Beats (5044), Syslog (5514), TCP/JSON (5000)
+# Sortie: Elasticsearch via les coordinating nodes (HTTPS)
+# ============================================================================
+
+input {
+
+  # Réception de logs depuis Filebeat / Metricbeat
+  beats {
+    port => 5044
+  }
+
+  # Réception syslog
+  syslog {
+    port => 5514
+    type => "syslog"
+  }
+
+  # Réception TCP générique (JSON)
+  tcp {
+    port => 5000
+    codec => json_lines
+    type => "tcp-json"
+  }
+
+  # Réception HTTP (ex: Webhooks, API, curl)
+  http {
+    port => 8080
+    codec => json
+    type => "http-json"
+  }
+}
+
+filter {
+
+  # Enrichissement des logs syslog
+  if [type] == "syslog" {
+    grok {
+      match => { "message" => "%{SYSLOGTIMESTAMP:syslog_timestamp} %{SYSLOGHOST:source_host} %{DATA:syslog_program}(?:\[%{POSINT:syslog_pid}\])?: %{GREEDYDATA:syslog_message}" }
+      add_field => { "received_at" => "%{@timestamp}" }
+    }
+    date {
+      match => [ "syslog_timestamp", "MMM  d HH:mm:ss", "MMM dd HH:mm:ss" ]
+    }
+  }
+
+  # Ajout de métadonnées
+  mutate {
+    add_field => { "logstash_node" => "{{ inventory_hostname }}" }
+  }
+}
+
+output {
+
+  # Sortie vers Elasticsearch (coordinating nodes, HTTPS, authentifié)
+  elasticsearch {
+    hosts => [
+{% for ip in es_coordinating_nodes %}
+      "https://{{ ip }}:9200"{{ "," if not loop.last else "" }}
+{% endfor %}
+    ]
+    user => "elastic"
+    password => "{{ es_elastic_password }}"
+    ssl_enabled => true
+    ssl_certificate_authorities => "/etc/logstash/certs/ca.crt"
+    ssl_verification_mode => "certificate"
+
+    # Index dynamique par type et par jour
+    # Index dynamique par type et par jour
+    index => "logstash-%{+YYYY.MM.dd}"
+    data_stream => false
+  }
+}

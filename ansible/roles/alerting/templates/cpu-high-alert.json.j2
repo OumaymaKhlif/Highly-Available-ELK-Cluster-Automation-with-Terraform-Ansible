@@ -1,0 +1,21 @@
+{
+  "name": "CPU Usage High (>{{ alert_cpu_threshold }}%)",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "schedule": {
+    "interval": "{{ alert_check_interval }}"
+  },
+  "params": {
+    "index": ["metricbeat-*"],
+    "timeField": "@timestamp",
+    "esQuery": "{\"query\":{\"bool\":{\"must\":[{\"range\":{\"system.cpu.total.norm.pct\":{\"gte\":{{ alert_cpu_threshold / 100 }}}}}],\"filter\":[{\"range\":{\"@timestamp\":{\"gte\":\"now-5m\"}}}]}}}",
+    "threshold": [1],
+    "thresholdComparator": ">=",
+    "size": 100,
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m"
+  },
+  "actions": [],
+  "tags": ["performance", "cpu", "high-usage"],
+  "enabled": true
+}

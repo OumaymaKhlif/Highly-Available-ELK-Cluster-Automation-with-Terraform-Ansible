@@ -1,0 +1,11 @@
+# ============================================================================
+# Phase 2 : Génération et distribution des certificats TLS
+# Exécuté sur les nœuds Elasticsearch uniquement
+# Les certificats pour Kibana et Logstash sont aussi générés
+# ============================================================================
+---
+- name: Configurer la sécurité TLS et les certificats
+  hosts: elasticsearch
+  become: true
+  roles:
+    - security

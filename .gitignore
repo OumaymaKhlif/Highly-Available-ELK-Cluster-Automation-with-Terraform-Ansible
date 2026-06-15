@@ -1,0 +1,38 @@
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform.lock.hcl
+terraform/tfplan
+terraform/*.auto.tfvars
+
+# Ansible
+ansible/*.retry
+ansible/playbooks/*.retry
+
+# Certificats et secrets
+*.pem
+*.p12
+*.jks
+/tmp/elk-certs/
+/tmp/elastic-ca.zip
+/tmp/elastic-certs.zip
+
+# Vault
+ansible/vault_password
+*.vault
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Logs
+*.log

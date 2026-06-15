@@ -1,0 +1,55 @@
+# ============================================================================
+# Rôle: heartbeat - Surveillance uptime de tous les services
+# Déployé sur lb-01 et lb-02 uniquement
+# ============================================================================
+---
+- name: Installer Heartbeat {{ elastic_version }}
+  ansible.builtin.apt:
+    name: "heartbeat-elastic={{ elastic_version }}"
+    state: present
+    allow_downgrade: yes
+
+- name: Créer le répertoire des certificats Heartbeat
+  ansible.builtin.file:
+    path: /etc/heartbeat/certs
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Copier le certificat CA
+  ansible.builtin.copy:
+    src: "/tmp/elk-certs/ca.crt"
+    dest: /etc/heartbeat/certs/ca.crt
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Déployer la configuration heartbeat.yml
+  ansible.builtin.template:
+    src: heartbeat.yml.j2
+    dest: /etc/heartbeat/heartbeat.yml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Redémarrer Heartbeat
+
+- name: Charger les dashboards Heartbeat (une seule fois)
+  ansible.builtin.command: >
+    heartbeat setup
+    -E output.elasticsearch.hosts=["https://{{ es_coordinating_nodes[0] }}:9200"]
+    -E output.elasticsearch.username=elastic
+    -E output.elasticsearch.password={{ es_elastic_password }}
+    -E output.elasticsearch.ssl.certificate_authorities=["/etc/heartbeat/certs/ca.crt"]
+    -E setup.kibana.host=https://{{ groups['kibana'][0] }}:5601
+    -E setup.kibana.username=elastic
+    -E setup.kibana.password={{ es_elastic_password }}
+    -E setup.kibana.ssl.certificate_authorities=["/etc/heartbeat/certs/ca.crt"]
+  when: inventory_hostname == groups['loadbalancers'][0]
+  ignore_errors: true
+
+- name: Activer et démarrer Heartbeat
+  ansible.builtin.systemd:
+    name: heartbeat-elastic
+    state: started
+    enabled: yes

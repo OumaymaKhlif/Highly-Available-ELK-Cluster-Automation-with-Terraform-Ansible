@@ -1,0 +1,8 @@
+# ============================================================================
+# Handlers du rôle auditbeat
+# ============================================================================
+---
+- name: Redémarrer Auditbeat
+  ansible.builtin.systemd:
+    name: auditbeat
+    state: restarted

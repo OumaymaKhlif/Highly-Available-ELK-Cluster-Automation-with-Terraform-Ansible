@@ -1,0 +1,40 @@
+#!/bin/bash
+# ============================================================================
+# Script cron pour snapshots Elasticsearch quotidiens
+# ============================================================================
+set -euo pipefail
+
+ES_HOST="https://{{ ansible_host }}:9200"
+ELASTIC_PASSWORD="{{ es_elastic_password }}"
+CA_CERT="{{ es_certs_dir }}/ca.crt"
+SNAPSHOT_NAME="daily-snap-$(date +%Y%m%d-%H%M%S)"
+
+echo "[$(date)] Création du snapshot: ${SNAPSHOT_NAME}"
+curl -sk -u "elastic:${ELASTIC_PASSWORD}" \
+  -X PUT "${ES_HOST}/_snapshot/{{ es_snapshot_repo_name }}/${SNAPSHOT_NAME}?wait_for_completion=false" \
+  -H "Content-Type: application/json" \
+  --cacert "${CA_CERT}" \
+  -d '{
+    "indices": "*",
+    "ignore_unavailable": true,
+    "include_global_state": false
+  }'
+
+echo ""
+echo "[$(date)] Snapshot ${SNAPSHOT_NAME} lancé."
+
+# Nettoyage des anciens snapshots (garder les 30 derniers)
+echo "[$(date)] Nettoyage des anciens snapshots..."
+SNAPSHOTS=$(curl -sk -u "elastic:${ELASTIC_PASSWORD}" \
+  --cacert "${CA_CERT}" \
+  "${ES_HOST}/_snapshot/{{ es_snapshot_repo_name }}/_all" | \
+  jq -r '.snapshots | sort_by(.start_time) | .[:-30] | .[].snapshot')
+
+for SNAP in ${SNAPSHOTS}; do
+  echo "  Suppression: ${SNAP}"
+  curl -sk -u "elastic:${ELASTIC_PASSWORD}" \
+    --cacert "${CA_CERT}" \
+    -X DELETE "${ES_HOST}/_snapshot/{{ es_snapshot_repo_name }}/${SNAP}"
+done
+
+echo "[$(date)] Nettoyage terminé."

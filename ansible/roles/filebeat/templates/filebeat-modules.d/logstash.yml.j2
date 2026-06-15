@@ -1,0 +1,8 @@
+# Module logstash - plain log and slowlog
+- module: logstash
+  log:
+    enabled: true
+    var.paths: ["/var/log/logstash/logstash-plain.log"]
+  slowlog:
+    enabled: true
+    var.paths: ["/var/log/logstash/logstash-slowlog-plain.log"]

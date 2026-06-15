@@ -1,0 +1,8 @@
+# Paramètres sysctl optimisés pour Elasticsearch
+# Nombre max de zones mmap (obligatoire pour ES)
+vm.max_map_count = 262144
+# Désactiver le swap au maximum
+vm.swappiness = 1
+# Paramètres réseau
+net.ipv4.ip_forward = 0
+net.ipv4.tcp_retries2 = 5

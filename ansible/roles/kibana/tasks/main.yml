@@ -1,0 +1,56 @@
+# ============================================================================
+# Rôle: kibana - Installation et configuration de Kibana 9.x
+# ============================================================================
+---
+- name: Installer Kibana {{ elastic_version }}
+  ansible.builtin.apt:
+    name: "kibana={{ elastic_version }}"
+    state: present
+    allow_downgrade: yes
+
+- name: Créer le répertoire des certificats Kibana
+  ansible.builtin.file:
+    path: /etc/kibana/certs
+    state: directory
+    owner: kibana
+    group: kibana
+    mode: "0750"
+
+- name: Copier le certificat CA
+  ansible.builtin.copy:
+    src: "/tmp/elk-certs/ca.crt"
+    dest: /etc/kibana/certs/ca.crt
+    owner: kibana
+    group: kibana
+    mode: "0640"
+
+- name: Copier le certificat Kibana
+  ansible.builtin.copy:
+    src: "/tmp/elk-certs/{{ inventory_hostname }}.crt"
+    dest: "/etc/kibana/certs/{{ inventory_hostname }}.crt"
+    owner: kibana
+    group: kibana
+    mode: "0640"
+
+- name: Copier la clé privée Kibana
+  ansible.builtin.copy:
+    src: "/tmp/elk-certs/{{ inventory_hostname }}.key"
+    dest: "/etc/kibana/certs/{{ inventory_hostname }}.key"
+    owner: kibana
+    group: kibana
+    mode: "0600"
+
+- name: Déployer la configuration kibana.yml
+  ansible.builtin.template:
+    src: kibana.yml.j2
+    dest: /etc/kibana/kibana.yml
+    owner: root
+    group: kibana
+    mode: "0660"
+  notify: Redémarrer Kibana
+
+- name: Activer et démarrer Kibana
+  ansible.builtin.systemd:
+    name: kibana
+    state: started
+    enabled: yes

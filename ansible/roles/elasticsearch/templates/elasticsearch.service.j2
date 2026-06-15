@@ -1,0 +1,9 @@
+# ============================================================================
+# Override systemd pour Elasticsearch
+# Généré par Ansible
+# ============================================================================
+[Service]
+LimitMEMLOCK=infinity
+LimitNOFILE=65535
+LimitNPROC=4096
+TimeoutStartSec=180

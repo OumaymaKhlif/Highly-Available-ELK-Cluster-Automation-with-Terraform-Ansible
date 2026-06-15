@@ -1,0 +1,13 @@
+# ============================================================================
+# Handlers du rôle haproxy
+# ============================================================================
+---
+- name: Redémarrer HAProxy
+  ansible.builtin.systemd:
+    name: haproxy
+    state: restarted
+
+- name: Redémarrer Keepalived
+  ansible.builtin.systemd:
+    name: keepalived
+    state: restarted

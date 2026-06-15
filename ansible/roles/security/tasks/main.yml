@@ -1,0 +1,112 @@
+# ============================================================================
+# Rôle: security - Génération et distribution des certificats TLS
+# Exécuté uniquement sur es-master-01, puis distribué à tous les nœuds
+# ============================================================================
+---
+# --- Étape 1: Générer la CA et les certificats sur es-master-01 ---
+- name: Générer le fichier instances.yml pour certutil
+  ansible.builtin.template:
+    src: instances.yml.j2
+    dest: /tmp/instances.yml
+    mode: "0644"
+  when: inventory_hostname == "es-master-01"
+
+- name: Générer la CA (Certificate Authority)
+  ansible.builtin.command: >
+    /usr/share/elasticsearch/bin/elasticsearch-certutil ca
+    --pem --out /tmp/elastic-ca.zip --pass "{{ es_ca_pass }}"
+  args:
+    creates: /tmp/elastic-ca.zip
+  when: inventory_hostname == "es-master-01"
+
+- name: Extraire la CA
+  ansible.builtin.unarchive:
+    src: /tmp/elastic-ca.zip
+    dest: /tmp/
+    remote_src: yes
+  when: inventory_hostname == "es-master-01"
+
+- name: Générer les certificats pour tous les nœuds
+  ansible.builtin.command:
+    argv:
+      - /usr/share/elasticsearch/bin/elasticsearch-certutil
+      - cert
+      - --ca-cert
+      - /tmp/ca/ca.crt
+      - --ca-key
+      - /tmp/ca/ca.key
+      - --pem
+      - --in
+      - /tmp/instances.yml
+      - --out
+      - /tmp/elastic-certs.zip
+      - --ca-pass
+      - "{{ es_ca_pass }}"
+  args:
+    creates: /tmp/elastic-certs.zip
+  when: inventory_hostname == "es-master-01"
+
+- name: Extraire les certificats
+  ansible.builtin.unarchive:
+    src: /tmp/elastic-certs.zip
+    dest: /tmp/
+    remote_src: yes
+  when: inventory_hostname == "es-master-01"
+
+# --- Étape 2: Récupérer les certificats sur le contrôleur Ansible ---
+- name: Créer le répertoire local pour les certificats
+  ansible.builtin.file:
+    path: "/tmp/elk-certs"
+    state: directory
+    mode: "0755"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Récupérer la CA sur le contrôleur
+  ansible.builtin.fetch:
+    src: "/tmp/ca/ca.crt"
+    dest: "/tmp/elk-certs/ca.crt"
+    flat: yes
+  when: inventory_hostname == "es-master-01"
+
+- name: Récupérer les certificats de chaque nœud
+  ansible.builtin.fetch:
+    src: "/tmp/{{ item }}/{{ item }}.crt"
+    dest: "/tmp/elk-certs/{{ item }}.crt"
+    flat: yes
+  loop: "{{ groups['elasticsearch'] + groups['kibana'] + groups['logstash'] }}"
+  when: inventory_hostname == "es-master-01"
+
+- name: Récupérer les clés de chaque nœud
+  ansible.builtin.fetch:
+    src: "/tmp/{{ item }}/{{ item }}.key"
+    dest: "/tmp/elk-certs/{{ item }}.key"
+    flat: yes
+  loop: "{{ groups['elasticsearch'] + groups['kibana'] + groups['logstash'] }}"
+  when: inventory_hostname == "es-master-01"
+
+# --- Étape 3: Distribuer les certificats à tous les nœuds ES ---
+- name: Copier le certificat CA
+  ansible.builtin.copy:
+    src: "/tmp/elk-certs/ca.crt"
+    dest: "{{ es_certs_dir }}/ca.crt"
+    owner: elasticsearch
+    group: elasticsearch
+    mode: "0640"
+
+- name: Copier le certificat du nœud
+  ansible.builtin.copy:
+    src: "/tmp/elk-certs/{{ es_node_name }}.crt"
+    dest: "{{ es_certs_dir }}/{{ es_node_name }}.crt"
+    owner: elasticsearch
+    group: elasticsearch
+    mode: "0640"
+
+- name: Copier la clé privée du nœud
+  ansible.builtin.copy:
+    src: "/tmp/elk-certs/{{ es_node_name }}.key"
+    dest: "{{ es_certs_dir }}/{{ es_node_name }}.key"
+    owner: elasticsearch
+    group: elasticsearch
+    mode: "0600"

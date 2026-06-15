@@ -1,0 +1,9 @@
+# ============================================================================
+# Phase 0 : Préparation système de tous les nœuds
+# ============================================================================
+---
+- name: Préparer tous les nœuds du cluster
+  hosts: all
+  become: true
+  roles:
+    - common

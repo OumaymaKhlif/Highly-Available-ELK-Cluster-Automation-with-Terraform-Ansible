@@ -1,0 +1,21 @@
+{
+  "name": "Service DOWN - Heartbeat",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "schedule": {
+    "interval": "{{ alert_check_interval }}"
+  },
+  "params": {
+    "index": ["heartbeat-*"],
+    "timeField": "@timestamp",
+    "esQuery": "{\"query\":{\"bool\":{\"must\":[{\"match\":{\"monitor.status\":\"down\"}}],\"filter\":[{\"range\":{\"@timestamp\":{\"gte\":\"now-2m\"}}}]}}}",
+    "threshold": [1],
+    "thresholdComparator": ">=",
+    "size": 100,
+    "timeWindowSize": 2,
+    "timeWindowUnit": "m"
+  },
+  "actions": [],
+  "tags": ["availability", "heartbeat", "service-down"],
+  "enabled": true
+}

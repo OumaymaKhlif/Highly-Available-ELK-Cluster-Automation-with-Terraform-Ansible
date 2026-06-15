@@ -1,0 +1,9 @@
+# ============================================================================
+# Phase 5 : Déploiement de Logstash sur les nœuds Logstash
+# ============================================================================
+---
+- name: Installer et configurer Logstash
+  hosts: logstash
+  become: true
+  roles:
+    - logstash

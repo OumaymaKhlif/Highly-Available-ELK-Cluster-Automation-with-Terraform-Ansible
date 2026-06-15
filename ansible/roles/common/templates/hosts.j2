@@ -1,0 +1,7 @@
+127.0.0.1   localhost
+::1         localhost ip6-localhost ip6-loopback
+
+# --- Cluster ELK HA ---
+{% for entry in etc_hosts_entries %}
+{{ entry.ip }}   {{ entry.hostname }}
+{% endfor %}

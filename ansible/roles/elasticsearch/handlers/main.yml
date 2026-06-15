@@ -1,0 +1,13 @@
+# ============================================================================
+# Handlers du rôle elasticsearch
+# ============================================================================
+---
+- name: Recharger systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Redémarrer Elasticsearch
+  ansible.builtin.systemd:
+    name: elasticsearch
+    state: restarted
+  when: es_certs_present | default(false)

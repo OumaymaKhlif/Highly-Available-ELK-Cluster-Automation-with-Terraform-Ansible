@@ -1,0 +1,99 @@
+# ============================================================================
+# Rôle: alerting - Création automatique des règles d'alertes Kibana
+# ============================================================================
+---
+- name: Attendre que Kibana soit prêt
+  ansible.builtin.uri:
+    url: "https://{{ groups['kibana'][0] }}:5601/api/status"
+    user: "elastic"
+    password: "{{ es_elastic_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    method: GET
+    status_code: [200]
+  retries: 30
+  delay: 10
+  register: kibana_status
+  until: kibana_status.status == 200
+
+- name: Créer le connector Index Elasticsearch pour les alertes
+  ansible.builtin.uri:
+    url: "https://{{ groups['kibana'][0] }}:5601/api/actions/connector"
+    user: "elastic"
+    password: "{{ es_elastic_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    method: POST
+    headers:
+      kbn-xsrf: "true"
+    body_format: json
+    body:
+      name: "ELK Alerts Index"
+      connector_type_id: ".index"
+      config:
+        index: "elk-alerts"
+        refresh: true
+      secrets: {}
+    status_code: [200, 409]
+  register: alert_connector
+  ignore_errors: true
+
+- name: Créer l'alerte SSH Bruteforce
+  ansible.builtin.uri:
+    url: "https://{{ groups['kibana'][0] }}:5601/api/alerting/rule"
+    user: "elastic"
+    password: "{{ es_elastic_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    method: POST
+    headers:
+      kbn-xsrf: "true"
+    body_format: json
+    body: "{{ lookup('template', 'ssh-bruteforce-alert.json.j2') | from_json }}"
+    status_code: [200, 409]
+  ignore_errors: true
+
+- name: Créer l'alerte Service DOWN (Heartbeat)
+  ansible.builtin.uri:
+    url: "https://{{ groups['kibana'][0] }}:5601/api/alerting/rule"
+    user: "elastic"
+    password: "{{ es_elastic_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    method: POST
+    headers:
+      kbn-xsrf: "true"
+    body_format: json
+    body: "{{ lookup('template', 'heartbeat-service-down.json.j2') | from_json }}"
+    status_code: [200, 409]
+  ignore_errors: true
+
+- name: Créer l'alerte CPU élevé
+  ansible.builtin.uri:
+    url: "https://{{ groups['kibana'][0] }}:5601/api/alerting/rule"
+    user: "elastic"
+    password: "{{ es_elastic_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    method: POST
+    headers:
+      kbn-xsrf: "true"
+    body_format: json
+    body: "{{ lookup('template', 'cpu-high-alert.json.j2') | from_json }}"
+    status_code: [200, 409]
+  ignore_errors: true
+
+- name: Créer l'alerte modification fichier critique
+  ansible.builtin.uri:
+    url: "https://{{ groups['kibana'][0] }}:5601/api/alerting/rule"
+    user: "elastic"
+    password: "{{ es_elastic_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    method: POST
+    headers:
+      kbn-xsrf: "true"
+    body_format: json
+    body: "{{ lookup('template', 'file-integrity-alert.json.j2') | from_json }}"
+    status_code: [200, 409]
+  ignore_errors: true

@@ -1,0 +1,2 @@
+# logstash-02 host variables
+ansible_host: 10.110.188.31

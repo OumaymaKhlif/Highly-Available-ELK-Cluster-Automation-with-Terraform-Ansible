@@ -1,0 +1,89 @@
+# ============================================================================
+# Phase 9 : Audit de sécurité - Vérification de la configuration
+# ============================================================================
+---
+- name: Vérifier la configuration d'audit de sécurité
+  hosts: es_masters[0]
+  become: true
+  tasks:
+    - name: Vérifier que l'audit ES est activé
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/_xpack/usage"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: GET
+        return_content: yes
+      register: xpack_usage
+
+    - name: Afficher le statut d'audit
+      ansible.builtin.debug:
+        msg: "Audit ES activé: {{ xpack_usage.json.security.audit.enabled | default('unknown') }}"
+
+    - name: Vérifier les index Auditbeat
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/auditbeat-*/_count"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: GET
+        return_content: yes
+      register: auditbeat_count
+      ignore_errors: true
+
+    - name: Afficher le nombre d'événements Auditbeat
+      ansible.builtin.debug:
+        msg: "Événements Auditbeat: {{ auditbeat_count.json.count | default(0) }}"
+
+    - name: Vérifier les index Filebeat
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/filebeat-*/_count"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: GET
+        return_content: yes
+      register: filebeat_count
+      ignore_errors: true
+
+    - name: Afficher le nombre d'événements Filebeat
+      ansible.builtin.debug:
+        msg: "Événements Filebeat: {{ filebeat_count.json.count | default(0) }}"
+
+    - name: Vérifier les index Heartbeat
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/heartbeat-*/_count"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: GET
+        return_content: yes
+      register: heartbeat_count
+      ignore_errors: true
+
+    - name: Afficher le nombre d'événements Heartbeat
+      ansible.builtin.debug:
+        msg: "Événements Heartbeat: {{ heartbeat_count.json.count | default(0) }}"
+
+    - name: Vérifier la santé du cluster
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}:9200/_cluster/health"
+        user: "elastic"
+        password: "{{ es_elastic_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        method: GET
+        return_content: yes
+      register: cluster_health
+
+    - name: Afficher la santé du cluster
+      ansible.builtin.debug:
+        msg: >
+          Cluster: {{ cluster_health.json.cluster_name }}
+          Status: {{ cluster_health.json.status }}
+          Nodes: {{ cluster_health.json.number_of_nodes }}
+          Data Nodes: {{ cluster_health.json.number_of_data_nodes }}
