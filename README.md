@@ -1,10 +1,13 @@
-# ELK HA Cluster — Automated Deployment
+# 🚀 Highly Available ELK Stack Automation (Terraform + Ansible)
 
-Production-grade, highly available ELK stack (Elasticsearch 9.4.1, Logstash 9.4.1, Kibana 9.4.1) on Proxmox VE with Terraform + Ansible.
+## Overview
+This project demonstrates the design and deployment of a **production-ready, highly available ELK 9.4.1 cluster** using Infrastructure as Code (IaC).  
+It focuses on automation, scalability, security, and observability in a distributed environment.
+
 
 ## Architecture
 
-**14 VMs** across 6 node types:
+The infrastructure is fully automated and includes **14 VMs** across 6 node types:
 
 | Rôle | Count | IPs |
 |------|-------|-----|
@@ -66,6 +69,32 @@ ansible-playbook playbooks/site.yml
 - **Auditbeat**: System audit, file integrity on all nodes
 - **Filebeat**: Application and auth logs on all nodes
 - **Heartbeat**: Uptime monitoring from LB nodes
+
+## 🎯 Objective
+
+To simulate a real-world **enterprise ELK deployment** and gain hands-on experience in:
+
+- DevOps & DevSecOps practices
+- Distributed systems
+- Infrastructure automation
+- Cloud-native architecture principles
+
+---
+
+## 👩‍💻 Authors
+
+- **Saba Kallel**
+- **Oumayma Khlif**
+
+---
+
+## 🚀 Status
+
+✔ Completed  
+✔ Production-ready architecture simulation  
+✔ Fully automated deployment
+
+---
 
 ## Documentation
 
